@@ -17,6 +17,10 @@ class SoundPlayer {
     private var isInterrupted: Bool = false
     public var isAudioEngineIsSetup: Bool = false
     
+    // Pre-buffering configuration
+    private var isPreBuffering: Bool = false
+    private var minBuffersBeforePlayback: Int = 2  // Minimum buffers required before playback starts
+    
     // specific turnID to ignore sound events
     internal let suspendSoundEventTurnId: String = "suspend-sound-events"
   
@@ -417,7 +421,8 @@ class SoundPlayer {
         turnId strTurnId: String,
         resolver: @escaping RCTPromiseResolveBlock,
         rejecter: @escaping RCTPromiseRejectBlock,
-        commonFormat: AVAudioCommonFormat = .pcmFormatFloat32
+        commonFormat: AVAudioCommonFormat = .pcmFormatFloat32,
+        enablePreBuffering: Bool = false
     ) throws {
         Logger.debug("New play chunk \(self.isInterrupted)")
         guard !self.isInterrupted else {
@@ -451,9 +456,25 @@ class SoundPlayer {
                 self.delegate?.onSoundStartedPlaying()
             }
             self.segmentsLeftToPlay += 1
-            // If not already playing, start playback
-            if audioQueue.count == 1 {
+            
+            // Pre-buffering logic
+            if enablePreBuffering && audioQueue.count == 1 {
+                self.isPreBuffering = true
+                Logger.debug("[SoundPlayer] Starting pre-buffering, waiting for \(minBuffersBeforePlayback) buffers")
+                // Don't start playback yet, wait for more buffers
+                if audioQueue.count >= minBuffersBeforePlayback {
+                    Logger.debug("[SoundPlayer] Pre-buffering complete, starting playback with \(audioQueue.count) buffers")
+                    self.isPreBuffering = false
+                    playNextInQueue()
+                }
+            } else if audioQueue.count == 1 && !self.isPreBuffering {
+                // If not pre-buffering and this is the first buffer, start playback immediately
                 Logger.debug("[SoundPlayer] Starting playback [ \(audioQueue.count)]")
+                playNextInQueue()
+            } else if self.isPreBuffering && audioQueue.count >= minBuffersBeforePlayback {
+                // If we're pre-buffering and have enough buffers, start playback
+                Logger.debug("[SoundPlayer] Pre-buffering complete, starting playback with \(audioQueue.count) buffers")
+                self.isPreBuffering = false
                 playNextInQueue()
             }
         } catch {

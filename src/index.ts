@@ -188,6 +188,32 @@ export class ExpoPlayAudioStream {
   }
 
   /**
+   * Plays a sound with pre-buffering enabled for smoother playback.
+   * This is especially useful for initial audio playback like during onboarding.
+   * @param {string} audio - The audio to play.
+   * @param {string} turnId - The turn ID.
+   * @param {string} [encoding] - The encoding format of the audio data ('pcm_f32le' or 'pcm_s16le').
+   * @returns {Promise<void>}
+   * @throws {Error} If the sound fails to play.
+   */
+  static async playSoundWithPreBuffering(
+    audio: string,
+    turnId: string,
+    encoding?: Encoding
+  ): Promise<void> {
+    try {
+      await ExpoPlayAudioStreamModule.playWithPreBuffering(
+        audio,
+        turnId,
+        encoding ?? EncodingTypes.PCM_S16LE
+      );
+    } catch (error) {
+      console.error(error);
+      throw new Error(`Failed to enqueue audio with pre-buffering: ${error}`);
+    }
+  }
+
+  /**
    * Stops the currently playing sound.
    * @returns {Promise<void>}
    * @throws {Error} If the sound fails to stop.

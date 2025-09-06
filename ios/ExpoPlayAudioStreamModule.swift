@@ -218,6 +218,42 @@ public class ExpoPlayAudioStreamModule: Module, AudioStreamManagerDelegate, Micr
             }
         }
         
+        /// Plays a sound with pre-buffering enabled for smoother playback
+        /// - Parameters:
+        ///   - base64Chunk: The base64 encoded audio chunk to play
+        ///   - turnId: The turn ID
+        ///   - encoding: The encoding format of the audio data
+        ///   - promise: A promise to resolve when the audio is queued
+        AsyncFunction("playWithPreBuffering") { (base64Chunk: String, turnId: String, encoding: String?, promise: Promise) in
+            Logger.debug("Play sound with pre-buffering")
+            do {
+                if !isAudioSessionInitialized {
+                    try ensureAudioSessionInitialized()
+                }
+                
+                // Determine the audio format based on the encoding parameter
+                let commonFormat: AVAudioCommonFormat
+                switch encoding {
+                case "pcm_f32le":
+                    commonFormat = .pcmFormatFloat32
+                case "pcm_s16le", nil:
+                    commonFormat = .pcmFormatInt16
+                default:
+                    Logger.debug("[ExpoPlayAudioStreamModule] Unsupported encoding: \(encoding ?? "nil"), defaulting to PCM_S16LE")
+                    commonFormat = .pcmFormatInt16
+                }
+        
+                try soundPlayer.play(audioChunk: base64Chunk, turnId: turnId, resolver: {
+                    _ in promise.resolve(nil)
+                }, rejecter: {code, message, error in
+                    promise.reject(code ?? "ERR_UNKNOWN", message ?? "Unknown error")
+                }, commonFormat: commonFormat, enablePreBuffering: true)
+            } catch {
+                print("Error enqueuing audio: \(error.localizedDescription)")
+                promise.reject("ERROR_PLAY_AUDIO", "Failed to play audio: \(error.localizedDescription)")
+            }
+        }
+        
         AsyncFunction("playWav") { (base64Chunk: String, promise: Promise) in
             if !isAudioSessionInitialized {
                 do {
