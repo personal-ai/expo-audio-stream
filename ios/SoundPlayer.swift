@@ -19,7 +19,7 @@ class SoundPlayer {
     
     // Pre-buffering configuration
     private var isPreBuffering: Bool = false
-    private var minBuffersBeforePlayback: Int = 2  // Minimum buffers required before playback starts
+    private var minBuffersBeforePlayback: Int = 10  // Minimum buffers required before playback starts
     
     // specific turnID to ignore sound events
     internal let suspendSoundEventTurnId: String = "suspend-sound-events"
