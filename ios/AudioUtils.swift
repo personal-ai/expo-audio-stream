@@ -92,31 +92,22 @@ class AudioUtils {
         var error: NSError? = nil
         let depth = bitDepth ?? 16
         var commonFormat: AVAudioCommonFormat = getCommonFormat(depth: depth)
-        
-        // Use the buffer's actual format instead of creating a new one
-        guard let desiredFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: sampleRate, channels: channels, interleaved: false),
-            let inputAudioConverter = AVAudioConverter(from: buffer.format, to: desiredFormat) else {
-            Logger.debug("AudioSessionManager: Failed to create converter or desired format.")
+        guard let nativeInputFormat = AVAudioFormat(commonFormat: commonFormat, sampleRate: buffer.format.sampleRate, channels: 1, interleaved: true) else {
+            Logger.debug("AudioSessionManager: Failed to convert to desired format. AudioFormat is corrupted.")
             return nil
         }
+        let desiredFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: sampleRate, channels: channels, interleaved: false)!
+        let inputAudioConverter = AVAudioConverter(from: nativeInputFormat, to: desiredFormat)!
         
-        // Calculate proper frame capacity for conversion
-        let frameCapacity = max(AVAudioFrameCount(Double(buffer.frameCapacity) * sampleRate / buffer.format.sampleRate), 1024)
-        guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: desiredFormat, frameCapacity: frameCapacity) else {
-            return nil
-        }
-        
-        let status = inputAudioConverter.convert(to: convertedBuffer, error: &error, withInputFrom: { inNumPackets, outStatus in
-            outStatus.pointee = .haveData
-            // Ensure we don't exceed buffer capacity
-            buffer.frameLength = min(inNumPackets, buffer.frameCapacity)
-            return buffer
+        let convertedBuffer = AVAudioPCMBuffer(pcmFormat: desiredFormat, frameCapacity: 1024)!
+        let status = inputAudioConverter.convert(to: convertedBuffer, error: &error, withInputFrom: {inNumPackets, outStatus in
+           outStatus.pointee = .haveData
+           buffer.frameLength = inNumPackets
+           return buffer
         })
-        
         if status == .haveData {
             return convertedBuffer
         }
-        
         return nil
     }
     
