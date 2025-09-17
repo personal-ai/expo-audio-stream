@@ -478,7 +478,9 @@ class SoundPlayer {
         }
         
         // Use a dedicated queue for buffer access to avoid blocking the main thread
-        self.bufferAccessQueue.async {
+        self.bufferAccessQueue.async(flags: .barrier) { [weak self] in
+            guard let self = self else { return }
+
             // Check if queue is empty INSIDE the async block to avoid race conditions
             guard !self.audioQueue.isEmpty else {
                 Logger.debug("[SoundPlayer] Queue is empty, nothing to play")
