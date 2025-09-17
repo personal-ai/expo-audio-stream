@@ -247,13 +247,20 @@ class SoundPlayer {
     /// - Parameter promise: Promise to resolve when queue is cleared
     func clearSoundQueue(turnIdToClear turnId: String = "", resolver promise: Promise) {
         Logger.debug("[SoundPlayer] Clearing Sound Queue...")
-        if !self.audioQueue.isEmpty {
-            Logger.debug("[SoundPlayer] Queue is not empty clearing")
-            self.audioQueue.removeAll(where: { $0.turnId == turnId } )
-        } else {
-            Logger.debug("[SoundPlayer] Queue is empty")
+        bufferAccessQueue.async(flags: .barrier) { [weak self] in
+            guard let self = self else {
+                promise.resolve(nil)
+                return
+            }
+            
+            if turnId.isEmpty {
+                self.audioQueue.removeAll()
+            } else {
+                self.audioQueue.removeAll(where: { $0.turnId == turnId })
+            }
+            
+            promise.resolve(nil)
         }
-        promise.resolve(nil)
     }
     
     /// Stops audio playback and clears the queue
