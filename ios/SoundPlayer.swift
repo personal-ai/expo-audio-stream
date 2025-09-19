@@ -494,8 +494,11 @@ class SoundPlayer {
                 return
             }
 
-            // With this:
-            if let (buffer, promise, turnId) = self.audioQueue.popFirst() {
+            // Get the first buffer tuple from the queue (buffer, promise, turnId)
+            if let (buffer, promise, turnId) = self.audioQueue.first {
+                // Remove the buffer from the queue immediately to avoid playing it twice
+                self.audioQueue.removeFirst()
+
                 // Schedule the buffer for playback with a completion handler
                 self.audioPlayerNode.scheduleBuffer(buffer) { [weak self] in
                     // ✅ Move to main queue to avoid blocking Core Audio's realtime thread
