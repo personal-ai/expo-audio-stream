@@ -534,11 +534,8 @@ class SoundPlayer {
                             Logger.debug("[SoundPlayer] Final segment in voice processing mode, stopping engine")
                             if let engine = self.audioEngine, engine.isRunning {
                                 engine.stop()
-                                do {
-                                    try self.disableVoiceProcessing()
-                                } catch {
-                                    Logger.error("[SoundPlayer] Failed to disable voice processing: \(error)")
-                                }
+                                // Disable voice processing after stopping the engine
+                                try? self.disableVoiceProcessing()
                                 self.isAudioEngineIsSetup = false
                             }
                         }
