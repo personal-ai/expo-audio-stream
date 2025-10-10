@@ -497,7 +497,13 @@ class SoundPlayer {
             // Get the first buffer tuple from the queue (buffer, promise, turnId)
             if let (buffer, promise, turnId) = self.audioQueue.first {
                 // Remove the buffer from the queue immediately to avoid playing it twice
-                self.audioQueue.removeFirst()
+                // Add safety check to prevent crash if queue becomes empty between first check and removeFirst
+                if !self.audioQueue.isEmpty {
+                    self.audioQueue.removeFirst()
+                } else {
+                    Logger.debug("[SoundPlayer] Queue became empty between check and removeFirst, skipping")
+                    return
+                }
 
                 // Schedule the buffer for playback with a completion handler
                 self.audioPlayerNode.scheduleBuffer(buffer) { [weak self] in
@@ -528,8 +534,11 @@ class SoundPlayer {
                             Logger.debug("[SoundPlayer] Final segment in voice processing mode, stopping engine")
                             if let engine = self.audioEngine, engine.isRunning {
                                 engine.stop()
-                                // Disable voice processing after stopping the engine
-                                try? self.disableVoiceProcessing()
+                                do {
+                                    try self.disableVoiceProcessing()
+                                } catch {
+                                    Logger.error("[SoundPlayer] Failed to disable voice processing: \(error)")
+                                }
                                 self.isAudioEngineIsSetup = false
                             }
                         }
